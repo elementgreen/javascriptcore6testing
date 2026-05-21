@@ -1,7 +1,10 @@
 {
 	"description": "testing",
 	"dependencies": {
-		"gid:javascriptcore6": "~>0.9.11"
+		"gid:javascriptcore6": {
+			"repository": "git+https://github.com/Kymorphia/gid.git",
+			"version": "873fb61676d978924f89cae2e67616821b18e97f"
+		}
 	},
 	"authors": [
 		"jordan4ibanez"

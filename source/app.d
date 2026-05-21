@@ -1,20 +1,15 @@
 import gobject.types;
-import javascriptcore.c.functions;
-import javascriptcore.c.types;
 import javascriptcore.context;
 import javascriptcore.exception;
 import javascriptcore.global;
 import javascriptcore.types;
 import javascriptcore.value;
-import javascriptcore.virtual_machine;
 import std.stdio;
+import std.conv : to;
 
 void main() {
 	// Auto creates a VM.
 	Context context = new Context();
-
-	// And then get the VM.
-	VirtualMachine vm = context.getVirtualMachine();
 
 	Value eval(string jsCode) {
 		Value output = context.evaluate(jsCode);
@@ -27,59 +22,95 @@ void main() {
 		return output;
 	}
 
-	// alias extern(C) void function() GCallback;
-	/*
-	JSCContext* context          = cast(JSCContext*) context._cPtr
-	const(char)* name            = null (assigned after)
-	GCallback callback           = cast(GCallback)&callback
-	void* userData               = cast(void*) stringTest
-	GDestroyNotify destroyNotify = destroyNotify
-	GType returnType             = GTypeFlags.None
-	uint nParams                 = 1
-	... (this is variadic)       = A list of GTypes, one for each parameter.
-	*/
-
-	import std.string;
-
-	extern (C) const(char)* callback(float number, const(char)* userData) {
-		import core.stdc.stdlib;
-
-		// Passed in from javascript.
+  auto test = Value.newFunction(context, "test", (double number) {
 		writeln("I am a callback! also: ", number);
+		return "hello from the callback!";
+  });
 
-		// Passed in from D.
-		writeln(userData.fromStringz);
-
-		// GTK takes over for C deallocation (I think).
-		const hl = "hello from the callback!";
-		char* retVal = cast(char*) malloc(char.sizeof * hl.length + 1);
-		retVal[0 .. hl.length + 1] = hl ~ '\0';
-
-		// Passing back out to D using GTK wrapper.
-		return retVal;
-	}
-
-	extern (C) void destroyNotify(void* data) {
-		writeln("destroy!!");
-	}
-
-	// Userdata getting passed in.
-	string stringTest = "hello from D";
-
-	JSCValue* test =
-		jsc_value_new_function(
-			cast(JSCContext*) context._cPtr,
-			null, cast(GCallback)&callback, cast(void*) stringTest.toStringz, &destroyNotify, GTypeEnum.String, 1, GTypeEnum
-				.Float);
-
-	jsc_context_set_value(cast(JSCContext*) context._cPtr, "test", test);
+	context.setValue("test", test);
 
 	Value output = eval("test(1);");
 
 	if (output.isString()) {
-		writeln(output.toString_);
+		writeln(output.get!string);
 	}
 
-	context.destroy();
+	context.setValue("testBoolean", Value.newFunction(context, "testBoolean", (bool val) {
+		writeln("testBoolean: ", val);
+		return val;
+	}));
 
+	context.setValue("testDouble", Value.newFunction(context, "testDouble", (double val) {
+		writeln("testDouble: ", val);
+		return val;
+	}));
+
+	context.setValue("testArray", Value.newFunction(context, "testArray", (double[] val) {
+		writeln("testArray: ", val);
+		return val;
+	}));
+
+	context.setValue("testMap", Value.newFunction(context, "testMap", (double[string] val) {
+		writeln("testMap: ", val);
+		return val;
+	}));
+
+	context.setValue("testValue", Value.newFunction(context, "testValue", (Value val) {
+		writeln("testValue: ", val.toJson(2));
+		return val;
+	}));
+
+	output = eval("testBoolean(true);");
+	assert(output.isBoolean);
+	assert(output.get!bool);
+
+	output = eval("testDouble(13.42);");
+	assert(output.isNumber);
+	assert(output.get!double == 13.42);
+
+	auto testDblArrayVal = [1.0, 2.0, 3.0, 4.0];
+	output = eval("testArray(" ~ testDblArrayVal.to!string ~ ");");
+	assert(output.isArray);
+	assert(output.get!(double[]) == testDblArrayVal);
+
+	auto testObjectVal = ["a": 1.0, "b": 2.0, "c": 3.0, "d": 4.0];
+	output = eval(`testMap({"a": 1.0, "b": 2.0, "c": 3.0, "d": 4.0});`);
+	assert(output.isObject);
+	assert(output.get!(double[string]) == testObjectVal);
+
+	auto testArray = [Value.from(context, 42.0), Value.from(context, "I am string"), Value.from(context, [3.0, 2.0, 1.0]),
+		Value.newFromJson(context, `{"a": 1.0, "b": "String value", "c": true, "d": null}`)];
+	auto testArrayVal = Value.newArrayFromGarray(context, testArray);
+  output = eval("testValue(" ~ testArrayVal.toJson(2) ~ ");");
+
+	assert(output.isArray);
+	assert(output.objectGetProperty("length").get!double == 4);
+
+	auto itemVal = output.objectGetPropertyAtIndex(0);
+	assert(itemVal.isNumber);
+	assert(itemVal.get!double == 42.0);
+
+	itemVal = output.objectGetPropertyAtIndex(1);
+	assert(itemVal.isString);
+	assert(itemVal.get!string == "I am string");
+
+	itemVal = output.objectGetPropertyAtIndex(2);
+	assert(itemVal.isArray);
+	assert(itemVal.get!(double[]) == [3.0, 2.0, 1.0]);
+
+	itemVal = output.objectGetPropertyAtIndex(3);
+	assert(itemVal.isObject);
+	auto objVal = itemVal.objectGetProperty("a");
+	assert(objVal.isNumber);
+	assert(objVal.get!double == 1.0);
+	objVal = itemVal.objectGetProperty("b");
+	assert(objVal.isString);
+	assert(objVal.get!string == "String value");
+	objVal = itemVal.objectGetProperty("c");
+	assert(objVal.isBoolean);
+	assert(objVal.get!bool == true);
+	objVal = itemVal.objectGetProperty("d");
+	assert(objVal.isNull);
+
+ 	context.destroy();
 }
