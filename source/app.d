@@ -45,6 +45,11 @@ void main() {
 		return val;
 	}));
 
+	context.setValue("testString", Value.newFunction(context, "testString", (string val) {
+		writeln("testString: ", val);
+		return val;
+	}));
+
 	context.setValue("testArray", Value.newFunction(context, "testArray", (double[] val) {
 		writeln("testArray: ", val);
 		return val;
@@ -67,6 +72,10 @@ void main() {
 	output = eval("testDouble(13.42);");
 	assert(output.isNumber);
 	assert(output.get!double == 13.42);
+
+	output = eval(`testString("Hi there!");`);
+	assert(output.isString);
+	assert(output.get!string == "Hi there!");
 
 	auto testDblArrayVal = [1.0, 2.0, 3.0, 4.0];
 	output = eval("testArray(" ~ testDblArrayVal.to!string ~ ");");
