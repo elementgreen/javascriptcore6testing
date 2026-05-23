@@ -3,7 +3,7 @@
 	"dependencies": {
 		"gid:javascriptcore6": {
 			"repository": "git+https://github.com/Kymorphia/gid.git",
-			"version": "873fb61676d978924f89cae2e67616821b18e97f"
+			"version": "0da9b388f0f48d5dd32fa935e0712f00f343ac64"
 		}
 	},
 	"authors": [

@@ -35,35 +35,58 @@ void main() {
 		writeln(output.get!string);
 	}
 
-	context.setValue("testBoolean", Value.newFunction(context, "testBoolean", (bool val) {
+	// Simple registration of functions using its D name
+	context.registerFunction!myTestDFunction;
+	output = eval(`myTestDFunction(42.0, "Howdy!")`);
+	assert(output.isNumber);
+	assert(output.get!double == 42 * 13);
+
+  // Test naming a D delegate
+  context.registerFunction("testDelegate", (string s) {
+		s ~= " is the way!";
+		writeln(s);
+		return s;
+	});
+	output = eval(`testDelegate("D")`);
+	assert(output.isString);
+	assert(output.get!string == "D is the way!");
+
+  // Test use of automatic name for a static method
+	TestClass.registerStaticMethod(context);
+	output = eval(`aStaticClassMethod("HI", 3)`);
+	assert(output.isArray);
+	assert(output.get!(string[]) == ["HI", "HI", "HI"]);
+
+
+	context.registerFunction("testBoolean", (bool val) {
 		writeln("testBoolean: ", val);
 		return val;
-	}));
+	});
 
-	context.setValue("testDouble", Value.newFunction(context, "testDouble", (double val) {
+	context.registerFunction("testDouble", (double val) {
 		writeln("testDouble: ", val);
 		return val;
-	}));
+	});
 
-	context.setValue("testString", Value.newFunction(context, "testString", (string val) {
+	context.registerFunction("testString", (string val) {
 		writeln("testString: ", val);
 		return val;
-	}));
+	});
 
-	context.setValue("testArray", Value.newFunction(context, "testArray", (double[] val) {
+	context.registerFunction("testArray", (double[] val) {
 		writeln("testArray: ", val);
 		return val;
-	}));
+	});
 
-	context.setValue("testMap", Value.newFunction(context, "testMap", (double[string] val) {
+	context.registerFunction("testMap", (double[string] val) {
 		writeln("testMap: ", val);
 		return val;
-	}));
+	});
 
-	context.setValue("testValue", Value.newFunction(context, "testValue", (Value val) {
+	context.registerFunction("testValue", (Value val) {
 		writeln("testValue: ", val.toJson(2));
 		return val;
-	}));
+	});
 
 	output = eval("testBoolean(true);");
 	assert(output.isBoolean);
@@ -122,4 +145,29 @@ void main() {
 	assert(objVal.isNull);
 
  	context.destroy();
+}
+
+double myTestDFunction(double d, string s)
+{
+	writeln("d: ", d, " s: ", s);
+
+  return d * 13.0;
+}
+
+class TestClass
+{
+	static void registerStaticMethod(Context context)
+	{
+		context.registerFunction!aStaticClassMethod;
+	}
+
+  static string[] aStaticClassMethod(string s, int count)
+	{
+		string[] sArray;
+
+		foreach (i; 0 .. count)
+			sArray ~= s;
+
+		return sArray;
+	}
 }
