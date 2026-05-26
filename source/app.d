@@ -22,6 +22,26 @@ void main() {
 		return output;
 	}
 
+
+	// Test class registration
+	ManualTestClass.registerJsClass(context);
+
+	auto output = eval(`
+		let obj = new ManualTestClass(42.0, "ManualTestClass", ["one", "two", "three"]);
+		obj.getAndPrintNumber("Number:");
+		obj.getAndPrintString("This is the");
+		obj.getAndPrintStringArray("On the count of:");
+
+		if (obj.number != 42.0)
+		  throw new Error("Number is not 42!");
+
+		obj.StringProperty = "It works!";
+		obj.StringProperty;
+	`);
+
+  assert(output.isString);
+	assert(output.get!string == "It works!");
+
   auto test = Value.newFunction(context, "test", (double number) {
 		writeln("I am a callback! also: ", number);
 		return "hello from the callback!";
@@ -29,7 +49,7 @@ void main() {
 
 	context.setValue("test", test);
 
-	Value output = eval("test(1);");
+	output = eval("test(1);");
 
 	if (output.isString()) {
 		writeln(output.get!string);
@@ -170,4 +190,59 @@ class TestClass
 
 		return sArray;
 	}
+}
+
+class ManualTestClass
+{
+	static void registerJsClass(Context context)
+	{
+		auto jsClass = context.registerClass!ManualTestClass;
+
+		auto ctor = jsClass.addConstructor!newFull;
+		context.setValue("ManualTestClass", ctor);
+
+		jsClass.addMethod!getAndPrintDouble("getAndPrintNumber");
+		jsClass.addMethod!getAndPrintString;
+		jsClass.addMethod!getAndPrintStringArray;
+
+		jsClass.addProperty!numberGetter("number");
+		jsClass.addProperty!(stringGetter, stringSetter)("StringProperty");
+	}
+
+	static ManualTestClass newFull(double d, string s, string[] sArray)
+	{
+		auto t = new ManualTestClass;
+		t.d = d;
+		t.s = s;
+		t.sArray = sArray;
+		return t;
+	}
+
+	double numberGetter() { return d; }
+
+	string stringGetter() { return s; }
+	void stringSetter(string s) { this.s = s; }
+
+	double getAndPrintDouble(string label)
+	{
+		writeln(label, " ", d);
+		return d;
+	}
+
+	string getAndPrintString(string label)
+	{
+		writeln(label, " ", s);
+		return s;
+	}
+
+	string[] getAndPrintStringArray(string label)
+	{
+		writeln(label, " ", sArray);
+		return sArray;
+	}
+
+private:
+	double d;
+	string s;
+  string[] sArray;
 }
