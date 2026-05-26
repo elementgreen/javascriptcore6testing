@@ -22,21 +22,66 @@ void main() {
 		return output;
 	}
 
-
-	// Test class registration
-	ManualTestClass.registerJsClass(context);
+  // Test UDA class registration
+	context.registerClass!UdaTestClass;
 
 	auto output = eval(`
-		let obj = new ManualTestClass(42.0, "ManualTestClass", ["one", "two", "three"]);
-		obj.getAndPrintNumber("Number:");
+		let obj = new UdaTestClass(13.0, "UdaTestClass", ["three", "two", "one"]);
 		obj.getAndPrintString("This is the");
-		obj.getAndPrintStringArray("On the count of:");
+		obj.getAndPrintNumber("Number:");
+		obj.getAndPrintSArray("On the count of:");
 
-		if (obj.number != 42.0)
+		if (obj.number != 13.0)
+		  throw new Error("Number is not 13!");
+
+		if (obj.str != "UdaTestClass")
+			throw new Error("Unexpected initial str property value!");
+
+		obj.str = "Meh";
+
+		if (obj.str != "Meh")
+			throw new Error("Unexpected assigned str property value!");
+
+		obj.StringProperty = "It is certainly working!";
+		obj.StringProperty;
+	`);
+
+  assert(output.isString);
+	assert(output.get!string == "It is certainly working!");
+
+	// Test automatic class registration
+	context.registerClass!(AutoTestClass, RegisterClassMode.Full);
+
+	output = eval(`
+		let aObj = new AutoTestClass(13.0, "AutoTestClass", ["three", "two", "one"]);
+		aObj.getAndPrintString("This is the");
+		aObj.getAndPrintNumber("Number:");
+		aObj.getAndPrintStringArray("On the count of:");
+
+		if (aObj.number != 13.0)
+		  throw new Error("Number is not 13!");
+
+		aObj.StringProperty = "It is certainly working!";
+		aObj.StringProperty;
+	`);
+
+  assert(output.isString);
+	assert(output.get!string == "It is certainly working!");
+
+	// Test manual class registration
+	ManualTestClass.registerJsClass(context);
+
+	output = eval(`
+		let bObj = new ManualTestClass(42.0, "ManualTestClass", ["one", "two", "three"]);
+		bObj.getAndPrintString("This is the");
+		bObj.getAndPrintNumber("Number:");
+		bObj.getAndPrintStringArray("On the count of:");
+
+		if (bObj.number != 42.0)
 		  throw new Error("Number is not 42!");
 
-		obj.StringProperty = "It works!";
-		obj.StringProperty;
+		bObj.StringProperty = "It works!";
+		bObj.StringProperty;
 	`);
 
   assert(output.isString);
@@ -196,7 +241,7 @@ class ManualTestClass
 {
 	static void registerJsClass(Context context)
 	{
-		auto jsClass = context.registerClass!ManualTestClass;
+		auto jsClass = context.registerClass!(ManualTestClass, RegisterClassMode.Manual);
 
 		auto ctor = jsClass.addConstructor!newFull;
 		context.setValue("ManualTestClass", ctor);
@@ -235,6 +280,89 @@ class ManualTestClass
 		return s;
 	}
 
+	string[] getAndPrintStringArray(string label)
+	{
+		writeln(label, " ", sArray);
+		return sArray;
+	}
+
+private:
+	double d;
+	string s;
+  string[] sArray;
+}
+
+class AutoTestClass
+{
+	static AutoTestClass create(double d, string s, string[] sArray)
+	{
+		auto t = new AutoTestClass;
+		t.d = d;
+		t.s = s;
+		t.sArray = sArray;
+		return t;
+	}
+
+	@property double number() { return d; }
+
+	@property string str() { return s; }
+	@property void str(string s) { this.s = s; }
+
+	double getAndPrintNumber(string label)
+	{
+		writeln(label, " ", d);
+		return d;
+	}
+
+	string getAndPrintString(string label)
+	{
+		writeln(label, " ", s);
+		return s;
+	}
+
+	string[] getAndPrintStringArray(string label)
+	{
+		writeln(label, " ", sArray);
+		return sArray;
+	}
+
+private:
+	double d;
+	string s;
+  string[] sArray;
+}
+
+class UdaTestClass
+{
+	static UdaTestClass create(double d, string s, string[] sArray)
+	{
+		auto t = new UdaTestClass;
+		t.d = d;
+		t.s = s;
+		t.sArray = sArray;
+		return t;
+	}
+
+	@JsExpose @property double number() { return d; } // Read only property
+	@JsExpose @property string str() { return s; }
+  @JsExpose @property void str(string s) { this.s = s; }
+
+	@JsExpose
+	double getAndPrintNumber(string label)
+	{
+		writeln(label, " ", d);
+		return d;
+	}
+
+	@JsExpose
+	string getAndPrintString(string label)
+	{
+		writeln(label, " ", s);
+		return s;
+	}
+
+	@JsName("getAndPrintSArray") // Rename test
+	@JsExpose
 	string[] getAndPrintStringArray(string label)
 	{
 		writeln(label, " ", sArray);
